@@ -1,0 +1,32 @@
+export async function requestJson(url, options = {}) {
+  const fetchImplementation = options.fetchImplementation || fetch;
+  const response = await fetchImplementation(url, {
+    method: options.method || "GET",
+    signal: options.signal || AbortSignal.timeout(options.timeoutMs || 30_000),
+    headers: options.headers,
+    body: options.body,
+  });
+  const text = await response.text();
+  const parsed = text ? tryParseJson(text) : { ok: true, value: {} };
+
+  if (!response.ok) {
+    const payload = parsed.ok ? parsed.value : {};
+    throw new Error(
+      options.errorMessage?.(response, payload) ||
+        `Request failed with HTTP ${response.status}.`,
+    );
+  }
+  if (!parsed.ok) {
+    throw new Error("Provider returned a response that was not valid JSON.");
+  }
+
+  return parsed.value;
+}
+
+function tryParseJson(text) {
+  try {
+    return { ok: true, value: JSON.parse(text) };
+  } catch {
+    return { ok: false };
+  }
+}

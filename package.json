@@ -1,0 +1,46 @@
+{
+  "name": "@quick-release/getquick-ops",
+  "version": "0.1.0",
+  "description": "Path-aware CLI for inspecting GetQuick Ploi and Cloudflare projects",
+  "type": "module",
+  "bin": {
+    "gq": "bin/gq.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "check": "pnpm format:check && pnpm lint && pnpm test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@10.13.1",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Quick-Release/getquick-ops.git"
+  },
+  "keywords": [
+    "cloudflare",
+    "ploi",
+    "cli",
+    "operations"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.3",
+    "globals": "^17.4.0",
+    "prettier": "^3.8.2"
+  }
+}
