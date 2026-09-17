@@ -18,13 +18,13 @@ The initial release is intentionally read-only. It can inspect Ploi servers/site
 Until an npm release is published, install directly from GitHub:
 
 ```bash
-pnpm add --global github:Quick-Release/getquick-ops
+pnpm add --global github:Quick-Release/getquick-ops#v0.1.0
 ```
 
 For reproducible automation, pin the package in each project as well:
 
 ```bash
-pnpm add --save-dev github:Quick-Release/getquick-ops
+pnpm add --save-dev github:Quick-Release/getquick-ops#v0.1.0
 ```
 
 ```json
