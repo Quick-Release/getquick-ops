@@ -1,7 +1,7 @@
 {
-  "name": "@quick-release/getquick-ops",
+  "name": "@quick-release/gq-ops",
   "version": "0.1.0",
-  "description": "Path-aware CLI for inspecting GetQuick Ploi and Cloudflare projects",
+  "description": "Interactive CLI for managing Ploi and inspecting Cloudflare projects",
   "type": "module",
   "bin": {
     "gq": "bin/gq.mjs"
@@ -9,6 +9,7 @@
   "files": [
     "bin",
     "src",
+    "docs/research/ploi-api.md",
     "README.md",
     "LICENSE"
   ],
@@ -28,7 +29,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Quick-Release/getquick-ops.git"
+    "url": "git+https://github.com/Quick-Release/gq-ops.git"
   },
   "keywords": [
     "cloudflare",
@@ -42,5 +43,8 @@
     "eslint": "^10.0.3",
     "globals": "^17.4.0",
     "prettier": "^3.8.2"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.8.1"
   }
 }

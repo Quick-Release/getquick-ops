@@ -54,6 +54,12 @@ test("human output escapes terminal control characters", () => {
   );
 });
 
+test("reports the package SemVer without requiring a project", async () => {
+  for (const flag of ["--version", "-v"]) {
+    assert.deepEqual(await captureConsole(() => runCli([flag])), ["0.1.0"]);
+  }
+});
+
 test("validates command syntax before requiring provider credentials", async () => {
   await assert.rejects(
     runCli(["ploi", "unknown"]),
@@ -68,3 +74,15 @@ test("validates command syntax before requiring provider credentials", async () 
     /--site is not valid for context show/,
   );
 });
+
+async function captureConsole(callback) {
+  const lines = [];
+  const original = console.log;
+  console.log = (line) => lines.push(String(line));
+  try {
+    await callback();
+  } finally {
+    console.log = original;
+  }
+  return lines;
+}

@@ -1,10 +1,25 @@
+import { spawn } from "node:child_process";
+import { configureCredentials } from "./credentials.mjs";
 import { loadProjectContext } from "./project-context.mjs";
 import { createCloudflareClient } from "./providers/cloudflare.mjs";
+import { syncActionsValues } from "./providers/github.mjs";
 import { createPloiClient } from "./providers/ploi.mjs";
 import { printValue } from "./output.mjs";
+import {
+  isPloiApiCommand,
+  runPloiApiCatalogCommand,
+  runPloiApiCommand,
+  validatePloiApiCommand,
+} from "./ploi-api-command.mjs";
+import { PLOI_ENDPOINTS } from "./providers/ploi-endpoints.mjs";
+import { chooseCommand, isInteractive } from "./ui.mjs";
+import { VERSION } from "./version.mjs";
 
 const COMMAND_OPTIONS = new Map([
   ["context show", []],
+  ["credentials configure", ["replaceExisting"]],
+  ["test post-deploy", []],
+  ["github actions sync", ["yes", "dryRun"]],
   ["ploi servers list", []],
   ["ploi server show", ["server"]],
   ["ploi sites list", ["server"]],
@@ -16,12 +31,27 @@ const COMMAND_OPTIONS = new Map([
 ]);
 
 export async function runCli(argv, options = {}) {
-  const parsed = parseArguments(argv);
+  const interactive = isInteractive(options);
+  let effectiveArguments = argv;
+  if (effectiveArguments.length === 0 && interactive) {
+    const selected = await chooseCommand(PLOI_ENDPOINTS);
+    if (!selected) return;
+    effectiveArguments = selected;
+  }
+
+  const parsed = parseArguments(effectiveArguments);
+  if (parsed.version) {
+    console.log(VERSION);
+    return;
+  }
   if (parsed.help || parsed.command.length === 0) {
     printHelp();
     return;
   }
   validateCommand(parsed);
+  if (isPloiApiCommand(parsed.command) && runPloiApiCatalogCommand(parsed)) {
+    return;
+  }
 
   const context = await loadProjectContext({
     cwd: options.cwd,
@@ -36,14 +66,49 @@ export async function runCli(argv, options = {}) {
     return;
   }
 
-  if (provider === "ploi") {
-    await runPloi({
-      context,
-      resource,
-      action,
-      parsed,
-      fetchImplementation: options.fetchImplementation,
+  if (provider === "test" && resource === "post-deploy") {
+    await runProjectPostDeploy(context);
+    return;
+  }
+
+  if (provider === "credentials" && resource === "configure") {
+    await configureCredentials(context, {
+      interactive,
+      replaceExisting: parsed.replaceExisting,
     });
+    return;
+  }
+
+  if (provider === "github" && resource === "actions" && action === "sync") {
+    printValue(
+      await syncActionsValues({
+        context,
+        dryRun: parsed.dryRun,
+        interactive,
+        yes: parsed.yes,
+      }),
+      parsed,
+    );
+    return;
+  }
+
+  if (provider === "ploi") {
+    if (resource === "api") {
+      await runPloiApiCommand({
+        context,
+        parsed,
+        fetchImplementation: options.fetchImplementation,
+        interactive,
+      });
+    } else {
+      await runPloi({
+        context,
+        resource,
+        action,
+        parsed,
+        fetchImplementation: options.fetchImplementation,
+      });
+    }
     return;
   }
 
@@ -182,18 +247,45 @@ function parseArguments(argv) {
     "--zone",
     "--name",
     "--type",
+    "--group",
+    "--search",
+    "--path",
+    "--query",
+    "--data",
+    "--data-file",
+    "--page",
+    "--per-page",
+    "--max-pages",
+  ]);
+  const repeatedValueOptions = new Set(["--path", "--query"]);
+  const booleanOptions = new Set([
+    "--all",
+    "--dry-run",
+    "--replace-existing",
+    "--yes",
   ]);
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--help" || argument === "-h" || argument === "help")
       parsed.help = true;
+    else if (argument === "--version" || argument === "-v")
+      parsed.version = true;
     else if (argument === "--json") parsed.json = true;
+    else if (booleanOptions.has(argument)) parsed[toOptionKey(argument)] = true;
     else if (valueOptions.has(argument)) {
       const value = argv[index + 1];
       if (!value || value.startsWith("--"))
         throw new Error(`${argument} requires a value.`);
-      parsed[toOptionKey(argument)] = value;
+      const key = toOptionKey(argument);
+      if (repeatedValueOptions.has(argument)) {
+        parsed[key] ||= [];
+        parsed[key].push(value);
+      } else {
+        if (parsed[key] !== undefined)
+          throw new Error(`${argument} may only be provided once.`);
+        parsed[key] = value;
+      }
       index += 1;
     } else if (argument.startsWith("--"))
       throw new Error(`Unknown option: ${argument}.`);
@@ -210,6 +302,11 @@ function toOptionKey(argument) {
 }
 
 function validateCommand(parsed) {
+  if (isPloiApiCommand(parsed.command)) {
+    validatePloiApiCommand(parsed);
+    return;
+  }
+
   const command = parsed.command.join(" ");
   const allowedOptions = COMMAND_OPTIONS.get(command);
   if (!allowedOptions)
@@ -288,29 +385,52 @@ function presentDnsRecord(record) {
   };
 }
 
+async function runProjectPostDeploy(context) {
+  const child = spawn("pnpm", ["gq", "test", "post-deploy"], {
+    cwd: context.projectRoot,
+    stdio: "inherit",
+  });
+  const exitCode = await new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", resolve);
+  });
+  if (exitCode !== 0) {
+    throw new Error(
+      `Project post-deployment checks exited with code ${exitCode ?? "unknown"}.`,
+    );
+  }
+}
+
 function required(value, label) {
   if (value === undefined || value === null || String(value).trim() === "") {
     throw new Error(
-      `${label} is required in getquick.ops.json, .env, or a CLI flag.`,
+      `${label} is required in gq.ops.json, .env, or a CLI flag.`,
     );
   }
   return String(value).trim();
 }
 
 function printHelp() {
-  console.log(`GetQuick operations CLI (read-only)
+  console.log(`gq operations CLI
 
 Usage:
   gq [global options] <command> [command options]
 
 Project:
   gq context show
+  gq credentials configure [--replace-existing]
+  gq test post-deploy
+  gq github actions sync [--dry-run] [--yes]
 
 Ploi:
   gq ploi servers list
   gq ploi server show [--server <id>]
   gq ploi sites list [--server <id>]
   gq ploi site show [--server <id>] [--site <id>]
+  gq ploi api list [--group <group>] [--search <text>]
+  gq ploi api describe <operation-id>
+  gq ploi api <operation-id> [--path <name=value>] [--query <name=value>]
+      [--data <json> | --data-file <file>] [--all] [--dry-run | --yes]
 
 Cloudflare:
   gq cloudflare accounts list
@@ -322,7 +442,8 @@ Global options:
   --project <directory>  Select a project explicitly
   --config <file>        Select a configuration file explicitly
   --json                 Print machine-readable JSON
+  --version, -v          Show the CLI version
   --help, -h             Show this help
 
-The CLI searches upward from the current directory for getquick.ops.json.`);
+The CLI searches upward from the current directory for gq.ops.json.`);
 }

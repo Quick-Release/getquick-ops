@@ -9,7 +9,8 @@ export async function requestJson(url, options = {}) {
   const text = await response.text();
   const parsed = text ? tryParseJson(text) : { ok: true, value: {} };
 
-  if (!response.ok) {
+  const acceptedStatus = options.acceptedStatuses?.includes(response.status);
+  if (!response.ok && !acceptedStatus) {
     const payload = parsed.ok ? parsed.value : {};
     throw new Error(
       options.errorMessage?.(response, payload) ||

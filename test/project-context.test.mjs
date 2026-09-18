@@ -9,18 +9,12 @@ import {
 } from "../src/project-context.mjs";
 
 test("discovers the project config from a nested working directory", async () => {
-  const root = await mkdtemp(join(tmpdir(), "getquick-ops-"));
+  const root = await mkdtemp(join(tmpdir(), "gq-ops-"));
   const nested = join(root, "apps", "web");
   await mkdir(nested, { recursive: true });
-  await writeFile(
-    join(root, "getquick.ops.json"),
-    '{"project":"discovered"}\n',
-  );
+  await writeFile(join(root, "gq.ops.json"), '{"project":"discovered"}\n');
 
-  assert.equal(
-    await findProjectConfig(nested),
-    join(root, "getquick.ops.json"),
-  );
+  assert.equal(await findProjectConfig(nested), join(root, "gq.ops.json"));
   const context = await loadProjectContext({ cwd: nested, environment: {} });
   assert.equal(context.projectRoot, root);
   assert.equal(context.config.project, "discovered");
@@ -31,12 +25,12 @@ test("discovers the project config from a nested working directory", async () =>
 });
 
 test("merges machine, project, and process environment in increasing precedence", async () => {
-  const root = await mkdtemp(join(tmpdir(), "getquick-ops-"));
+  const root = await mkdtemp(join(tmpdir(), "gq-ops-"));
   const configHome = join(root, "machine");
-  await mkdir(join(configHome, "getquick"), { recursive: true });
-  await writeFile(join(root, "getquick.ops.json"), '{"project":"env-test"}\n');
+  await mkdir(join(configHome, "gq"), { recursive: true });
+  await writeFile(join(root, "gq.ops.json"), '{"project":"env-test"}\n');
   await writeFile(
-    join(configHome, "getquick", "ops.env"),
+    join(configHome, "gq", "ops.env"),
     "SOURCE=machine\nMACHINE_ONLY=yes\n",
   );
   await writeFile(join(root, ".env"), "SOURCE=project\nPROJECT_ONLY=yes\n");
@@ -52,18 +46,18 @@ test("merges machine, project, and process environment in increasing precedence"
 });
 
 test("does not inherit configuration across a nested Git repository", async () => {
-  const root = await mkdtemp(join(tmpdir(), "getquick-ops-"));
+  const root = await mkdtemp(join(tmpdir(), "gq-ops-"));
   const nestedRepository = join(root, "untrusted");
   await mkdir(join(nestedRepository, ".git"), { recursive: true });
-  await writeFile(join(root, "getquick.ops.json"), '{"project":"parent"}\n');
+  await writeFile(join(root, "gq.ops.json"), '{"project":"parent"}\n');
 
   assert.equal(await findProjectConfig(nestedRepository), null);
 });
 
 test("fails clearly outside a configured project", async () => {
-  const root = await mkdtemp(join(tmpdir(), "getquick-ops-"));
+  const root = await mkdtemp(join(tmpdir(), "gq-ops-"));
   await assert.rejects(
     loadProjectContext({ cwd: root, environment: {} }),
-    /No getquick\.ops\.json found/,
+    /No gq\.ops\.json found/,
   );
 });

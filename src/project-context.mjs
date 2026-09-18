@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { readEnvFile } from "./env.mjs";
 
-export const CONFIG_FILENAME = "getquick.ops.json";
+export const CONFIG_FILENAME = "gq.ops.json";
 
 export async function findProjectConfig(startDirectory = process.cwd()) {
   let directory = await realpath(resolve(startDirectory));
@@ -91,7 +91,7 @@ function validateConfig(config) {
 
 function getMachineEnvPath(environment) {
   const configHome = environment.XDG_CONFIG_HOME || join(homedir(), ".config");
-  return join(configHome, "getquick", "ops.env");
+  return join(configHome, "gq", "ops.env");
 }
 
 async function exists(path) {

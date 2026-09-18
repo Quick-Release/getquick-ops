@@ -8,4 +8,4 @@ Include the affected command, expected impact, and reproduction steps without in
 
 ## Credential handling
 
-GetQuick Ops reads provider credentials from the process environment, a project-local `.env`, or `${XDG_CONFIG_HOME:-~/.config}/getquick/ops.env`. Keep credential files out of version control and restrict them to the local user.
+gq Ops reads provider credentials from the process environment, a project-local `.env`, or `${XDG_CONFIG_HOME:-~/.config}/gq/ops.env`. Keep credential files out of version control and restrict them to the local user.
